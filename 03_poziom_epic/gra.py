@@ -175,9 +175,12 @@ class FalaUderzeniowa:
 
     def rysuj(self, surf):
         alfa = int(self.zycie * 200)
-        # Rysujemy tylko obwód okręgu (hollow circle)
+        # Rysujemy dwa okręgi dla efektu 'neonowego' obramowania
         s = pygame.Surface((int(self.promien*2), int(self.promien*2)), pygame.SRCALPHA)
-        pygame.draw.circle(s, (*self.kolor, alfa), (int(self.promien), int(self.promien)), int(self.promien), 5)
+        # Zewnętrzna poświata
+        pygame.draw.circle(s, (*self.kolor, alfa // 2), (int(self.promien), int(self.promien)), int(self.promien), 8)
+        # Wewnętrzny rdzeń fali
+        pygame.draw.circle(s, (255, 255, 255, alfa), (int(self.promien), int(self.promien)), int(self.promien), 3)
         surf.blit(s, (self.x - self.promien, self.y - self.promien))
 
 # Kontenery na aktywne efekty wizualne
@@ -363,7 +366,8 @@ while dziala:
         # Moment kolizji (uderzenia)
         if 0.8 < czas_animacji < 1.0 and len(lista_fal) == 0:
             snd_hit.play()
-            stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, BIALY, 80)
+            # Błysk i podstawowy wybuch (biały rdzeń)
+            stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, BIALY, 40)
             efekt_flash = 255
             
         if czas_animacji > 1.5:
@@ -371,6 +375,8 @@ while dziala:
             if wybor_gracza == wybor_komputera:
                 wynik_rundy, kolor_wyniku, kto_wygral = "REMIS!", BIALY, 0
                 snd_lector["remis"].play()
+                combo_gracza = 0
+                combo_komputera = 0
             elif (wybor_gracza == "Kamień" and wybor_komputera == "Nożyce") or \
                  (wybor_gracza == "Papier" and wybor_komputera == "Kamień") or \
                  (wybor_gracza == "Nożyce" and wybor_komputera == "Papier"):
@@ -378,11 +384,17 @@ while dziala:
                 snd_lector["wygrywasz"].play()
                 hp_komputera -= 1
                 combo_gracza += 1
+                combo_komputera = 0
+                if combo_gracza > 1: combo_napis_skala = 2.0
+                stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, ZIELONY, 100)
             else:
                 wynik_rundy, kolor_wyniku, kto_wygral = "PRZEGRYWASZ!", CZERWONY, -1
                 snd_lector["przegrywasz"].play()
                 hp_gracza -= 1
                 combo_komputera += 1
+                combo_gracza = 0
+                if combo_komputera > 1: combo_napis_skala = 2.0
+                stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, CZERWONY, 100)
             zmien_stan("WYNIK")
 
     elif stan_gry == "WYNIK":
@@ -404,11 +416,31 @@ while dziala:
             zmien_stan("MENU")
 
     # Obsługa suwaków na dole ekranu
+    # 1. Suwak Muzyki
     glosnosc_bgm = rysuj_suwak("Muzyka", 30, WYSOKOSC - 100, glosnosc_bgm)
     pygame.mixer.music.set_volume(glosnosc_bgm)
-    glosnosc_lector = rysuj_suwak("Głos", 220, WYSOKOSC - 60, glosnosc_lector)
+    
+    # 2. Suwak Efektów (SFX)
+    glosnosc_sfx = rysuj_suwak("Efekty", 220, WYSOKOSC - 100, glosnosc_sfx)
+    aktualizuj_glosnosc_sfx()
+    
+    # 3. Suwak Lektora (Głos)
+    glosnosc_lector = rysuj_suwak("Głos", 410, WYSOKOSC - 100, glosnosc_lector)
     aktualizuj_glosnosc_lector()
     
+    # --- DODATEK: Animacja COMBO na środku ekranu ---
+    if combo_napis_skala > 0:
+        combo_text = f"COMBO X{max(combo_gracza, combo_komputera)}"
+        kol_combo = ZIELONY if combo_gracza > 1 else CZERWONY
+        # Obliczamy wielkość czcionki na podstawie skali
+        s_size = int(80 * combo_napis_skala)
+        c_font = pygame.font.SysFont("impact", s_size)
+        c_surf = c_font.render(combo_text, True, kol_combo)
+        c_rect = c_surf.get_rect(center=(SZEROKOSC//2, WYSOKOSC//2 - 150))
+        # Dodajemy białą obwódkę (glow)
+        ekran.blit(c_surf, c_rect)
+        combo_napis_skala = max(0, combo_napis_skala - dt * 1.5)
+
     pygame.display.flip()
 
 pygame.quit()
