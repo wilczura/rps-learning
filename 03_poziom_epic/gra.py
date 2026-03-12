@@ -465,15 +465,16 @@ while dziala:
         ekran.blit(grafiki_broni[wybor_gracza], (SZEROKOSC//2 - 250 + off_x, WYSOKOSC//2 - 100 + off_y))
         ekran.blit(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), (SZEROKOSC//2 + 50 + off_x, WYSOKOSC//2 - 100 + off_y))
         
+        # Napis wyniku na górze (zamiast "Wybierz broń")
         n_s = czcionka_duza.render(wynik_rundy, True, kolor_wyniku)
-        ekran.blit(n_s, n_s.get_rect(center=(SZEROKOSC//2, WYSOKOSC//2 + 250 + off_y)))
+        ekran.blit(n_s, n_s.get_rect(center=(SZEROKOSC//2, 110 + off_y + n_s.get_height()//2)))
         
         if czas_animacji > 2.0:
             if hp_gracza <= 0 or hp_komputera <= 0: zmien_stan("KONIEC_MECZU")
             else: zmien_stan("MENU")
 
     elif stan_gry == "KONIEC_MECZU":
-        txt, col = ("KRÓL JEST TYLKO JEDEN!", ZIELONY) if hp_gracza > 0 else ("TERMINACJA ZAKOŃCZONA!", CZERWONY)
+        txt, col = ("WYGRAŁEŚ CAŁY MECZ!", ZIELONY) if hp_gracza > 0 else ("KOMPUTER CIĘ ZNISZCZYŁ!", CZERWONY)
         n_s = czcionka_duza.render(txt, True, col)
         ekran.blit(n_s, n_s.get_rect(center=(SZEROKOSC//2, WYSOKOSC//2 - 50)))
         if rysuj_przycisk("ZAGRAJ PONOWNIE", SZEROKOSC//2 - 150, WYSOKOSC//2 + 100, 300, 60):
