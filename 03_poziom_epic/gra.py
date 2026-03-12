@@ -211,6 +211,19 @@ wynik_rundy = ""
 kolor_wyniku = BIALY
 kto_wygral = 0 # -1 komputer, 1 gracz, 0 remis
 combo_napis_skala = 0
+shake_amount = 0 # Intensywność aktualnego wstrząsu ekranu
+
+def stworz_shake(moc):
+    """Aktywuje wstrząs ekranu o danej sile."""
+    global shake_amount
+    shake_amount = moc
+
+def get_shake_offset():
+    """Zwraca losowe przesunięcie (x, y) dla efektu wstrząsu."""
+    if shake_amount > 0:
+        return random.randint(-int(shake_amount), int(shake_amount)), \
+               random.randint(-int(shake_amount), int(shake_amount))
+    return 0, 0
 
 def rysuj_hud():
     """Rysuje górny pasek z punktami HP (Neon Bars)."""
@@ -305,11 +318,17 @@ while dziala:
     # dt (delta time) — czas jaki upłynął od ostatniej klatki.
     # Używamy go, by prędkość animacji (np. cząsteczek) była taka sama na każdym komputerze.
     dt = zegar.tick(60) / 1000.0 
+    
+    # Aktualizacja wstrząsu (wygaszanie)
+    if shake_amount > 0:
+        shake_amount = max(0, shake_amount - dt * 50)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT: dziala = False
 
-    ekran.blit(img_tlo, (0, 0)) # Rysujemy tło jako pierwszą warstwę
+    # Stosujemy wstrząs do tła i wszystkich elementów
+    off_x, off_y = get_shake_offset()
+    ekran.blit(img_tlo, (off_x, off_y)) # Rysujemy tło z przesunięciem
     
     # RYSOWANIE VFX (Warstwa 2)
     for f in lista_fal[:]:
@@ -355,17 +374,22 @@ while dziala:
 
     elif stan_gry == "ANIMACJA":
         czas_animacji += dt
-        # Prosta animacja zbliżania się broni do siebie
+        # Soczysta animacja wejścia (Overshoot) — używamy funkcji sin dla efektu sprężyny
         cel_x_g, cel_x_k = SZEROKOSC//2 - 250, SZEROKOSC//2 + 50
-        x_g = -200 + (cel_x_g + 200) * min(1.0, czas_animacji * 1.5)
-        x_k = SZEROKOSC + (cel_x_k - (SZEROKOSC)) * min(1.0, czas_animacji * 1.5)
+        progress = min(1.0, czas_animacji * 1.5)
+        # Overshoot: wymuszamy przekroczenie celu i powrót (bounce)
+        bounce = 1.0 + (0.2 * (1.0 - progress) * abs(random.uniform(-1, 1))) if progress < 1.0 else 1.0
         
-        ekran.blit(grafiki_broni[wybor_gracza], (x_g, WYSOKOSC//2 - 100))
-        ekran.blit(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), (x_k, WYSOKOSC//2 - 100))
+        x_g = -200 + (cel_x_g + 200) * progress * bounce
+        x_k = SZEROKOSC + (cel_x_k - SZEROKOSC) * progress * bounce
+        
+        ekran.blit(grafiki_broni[wybor_gracza], (x_g + off_x, WYSOKOSC//2 - 100 + off_y))
+        ekran.blit(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), (x_k + off_x, WYSOKOSC//2 - 100 + off_y))
 
         # Moment kolizji (uderzenia)
         if 0.8 < czas_animacji < 1.0 and len(lista_fal) == 0:
             snd_hit.play()
+            stworz_shake(15) # Wstrząs przy uderzeniu
             # Błysk i podstawowy wybuch (biały rdzeń)
             stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, BIALY, 40)
             efekt_flash = 255
@@ -395,13 +419,19 @@ while dziala:
                 combo_gracza = 0
                 if combo_komputera > 1: combo_napis_skala = 2.0
                 stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, CZERWONY, 100)
+                stworz_shake(25) # Mocniejszy wstrząs przy przegranej
             zmien_stan("WYNIK")
 
     elif stan_gry == "WYNIK":
         # Ekran pokazujący zwycięzcę rundy i napis COMBO
         czas_animacji += dt
+        
+        # Przywracamy bronie na ekranie wyników
+        ekran.blit(grafiki_broni[wybor_gracza], (SZEROKOSC//2 - 250 + off_x, WYSOKOSC//2 - 100 + off_y))
+        ekran.blit(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), (SZEROKOSC//2 + 50 + off_x, WYSOKOSC//2 - 100 + off_y))
+        
         n_s = czcionka_duza.render(wynik_rundy, True, kolor_wyniku)
-        ekran.blit(n_s, n_s.get_rect(center=(SZEROKOSC//2, WYSOKOSC//2 + 250)))
+        ekran.blit(n_s, n_s.get_rect(center=(SZEROKOSC//2, WYSOKOSC//2 + 250 + off_y)))
         
         if czas_animacji > 2.0:
             if hp_gracza <= 0 or hp_komputera <= 0: zmien_stan("KONIEC_MECZU")
@@ -427,6 +457,11 @@ while dziala:
     # 3. Suwak Lektora (Głos)
     glosnosc_lector = rysuj_suwak("Głos", 410, WYSOKOSC - 100, glosnosc_lector)
     aktualizuj_glosnosc_lector()
+    
+    # 4. Przycisk Wyjścia
+    if rysuj_przycisk("WYJDŹ", SZEROKOSC - 180, WYSOKOSC - 80, 150, 50):
+        pygame.quit()
+        sys.exit()
     
     # --- DODATEK: Animacja COMBO na środku ekranu ---
     if combo_napis_skala > 0:
