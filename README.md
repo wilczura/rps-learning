@@ -43,26 +43,12 @@ Projekt został stworzony jako materiał dydaktyczny dla uczniów, aby pokazać 
 
 ---
 
-## 🌐 Zagraj w Przeglądarce (Wersje Web)
-
-Dzięki narzędziu **pygbag**, każda z wersji gry może zostać uruchomiona bezpośrednio na stronie internetowej! Przygotowałem specjalne pliki `main.py`, które na to pozwalają (nawet dla wersji konsolowej).
-
-### Jak uruchomić wybraną wersję w przeglądarce?
-1.  Zainstaluj pygbag: `pip install pygbag`
-2.  Uruchom budowanie dla wybranego folderu:
-    *   **Konsola**: `pygbag 01_konsolowy`
-    *   **Graficzna**: `pygbag 02_wizualny`
-    *   **EPIC**: `pygbag 03_poziom_epic`
-3.  Otwórz przeglądarkę na `http://localhost:8000`.
-
-**Ważne**: Wersja konsolowa w przeglądarce działa przez symulację — używaj klawiszy `1, 2, 3` na klawiaturze zamiast wpisywania tekstu!
-
 ---
 
 ## 💡 Czego uczy ten projekt?
 1.  **Podstawy Programowania**: Typy danych, instrukcje warunkowe, pętle (patrz: `01_konsolowy`).
 2.  **Modularność**: Rozdzielanie zasobów (`assets`) od logiki kodu (patrz: `03_poziom_epic`).
 3.  **Animacja i VFX**: Delta time (`dt`), system cząsteczek i świecenie (patrz: `03_poziom_epic`).
-4.  **WebAssembly**: Jak przenieść kod Pythona na każdą przeglądarkę na świecie.
+4.  **Matematyka w Grach**: Praca z wektorami, randomizacja i czas fizyczny.
 
 ---
