@@ -374,17 +374,24 @@ while dziala:
 
     elif stan_gry == "ANIMACJA":
         czas_animacji += dt
-        # Soczysta animacja wejścia (Overshoot) — używamy funkcji sin dla efektu sprężyny
+        # Soczysta animacja wejścia (Overshoot + Rotacja)
         cel_x_g, cel_x_k = SZEROKOSC//2 - 250, SZEROKOSC//2 + 50
         progress = min(1.0, czas_animacji * 1.5)
-        # Overshoot: wymuszamy przekroczenie celu i powrót (bounce)
-        bounce = 1.0 + (0.2 * (1.0 - progress) * abs(random.uniform(-1, 1))) if progress < 1.0 else 1.0
         
+        # Overshoot: efekt sprężyny
+        bounce = 1.0 + (0.2 * (1.0 - progress) * abs(random.uniform(-0.5, 0.5))) if progress < 1.0 else 1.0
         x_g = -200 + (cel_x_g + 200) * progress * bounce
         x_k = SZEROKOSC + (cel_x_k - SZEROKOSC) * progress * bounce
         
-        ekran.blit(grafiki_broni[wybor_gracza], (x_g + off_x, WYSOKOSC//2 - 100 + off_y))
-        ekran.blit(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), (x_k + off_x, WYSOKOSC//2 - 100 + off_y))
+        # ROTACJA: Broń obraca się podczas dolotu
+        kat_g = (1.0 - progress) * 360  # Obrót od 360 do 0 stopni
+        kat_k = (1.0 - progress) * -360 # Obrót w drugą stronę
+        
+        img_g = pygame.transform.rotate(grafiki_broni[wybor_gracza], kat_g)
+        img_k = pygame.transform.rotate(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), kat_k)
+        
+        ekran.blit(img_g, img_g.get_rect(center=(x_g + 100 + off_x, WYSOKOSC//2 + off_y)))
+        ekran.blit(img_k, img_k.get_rect(center=(x_k + 100 + off_x, WYSOKOSC//2 + off_y)))
 
         # Moment kolizji (uderzenia)
         if 0.8 < czas_animacji < 1.0 and len(lista_fal) == 0:
@@ -406,6 +413,7 @@ while dziala:
                  (wybor_gracza == "Nożyce" and wybor_komputera == "Papier"):
                 wynik_rundy, kolor_wyniku, kto_wygral = "WYGRYWASZ!", ZIELONY, 1
                 snd_lector["wygrywasz"].play()
+                if snd_win: snd_win.play() # Przywrócony dźwięk sukcesu
                 hp_komputera -= 1
                 combo_gracza += 1
                 combo_komputera = 0
@@ -414,6 +422,7 @@ while dziala:
             else:
                 wynik_rundy, kolor_wyniku, kto_wygral = "PRZEGRYWASZ!", CZERWONY, -1
                 snd_lector["przegrywasz"].play()
+                if snd_lose: snd_lose.play() # Przywrócony dźwięk porażki
                 hp_gracza -= 1
                 combo_komputera += 1
                 combo_gracza = 0
