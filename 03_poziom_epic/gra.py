@@ -212,6 +212,8 @@ kolor_wyniku = BIALY
 kto_wygral = 0 # -1 komputer, 1 gracz, 0 remis
 combo_napis_skala = 0
 shake_amount = 0 # Intensywność aktualnego wstrząsu ekranu
+pos_startowa_g = (0, 0) # Zapamiętana pozycja startowa dla nowej animacji
+pos_startowa_k = (SZEROKOSC, 0)
 
 def stworz_shake(moc):
     """Aktywuje wstrząs ekranu o danej sile."""
@@ -289,6 +291,7 @@ def rysuj_przycisk(tekst, x, y, szerokosc, wysokosc, opcja_ikona=None, x_img=0, 
     ekran.blit(txt, txt.get_rect(center=(x + szerokosc/2, y + wysokosc/2 + y_off)))
 
     if hover and klik[0]:
+        if snd_click: snd_click.play() # Przywrócony dźwięk kliknięcia
         pygame.time.delay(150)
         return True
     return False
@@ -358,45 +361,68 @@ while dziala:
         y_btn = WYSOKOSC - 180
         if rysuj_przycisk("KAMIEŃ", odst, y_btn, 200, 60, "Kamień", odst, y_btn - 220):
             wybor_gracza = "Kamień"
+            pos_startowa_g = (odst, y_btn - 220)
+            pos_startowa_k = (SZEROKOSC + 200, WYSOKOSC // 2)
             snd_lector["kamien"].play()
             wybor_komputera = random.choice(opcje)
             zmien_stan("ANIMACJA")
         if rysuj_przycisk("PAPIER", odst*2 + 200, y_btn, 200, 60, "Papier", odst*2 + 200, y_btn - 220):
             wybor_gracza = "Papier"
+            pos_startowa_g = (odst*2 + 200, y_btn - 220)
+            pos_startowa_k = (SZEROKOSC + 200, WYSOKOSC // 2)
             snd_lector["papier"].play()
             wybor_komputera = random.choice(opcje)
             zmien_stan("ANIMACJA")
         if rysuj_przycisk("NOŻYCE", odst*3 + 400, y_btn, 200, 60, "Nożyce", odst*3 + 400, y_btn - 220):
             wybor_gracza = "Nożyce"
+            pos_startowa_g = (odst*3 + 400, y_btn - 220)
+            pos_startowa_k = (SZEROKOSC + 200, WYSOKOSC // 2)
             snd_lector["nozyce"].play()
             wybor_komputera = random.choice(opcje)
             zmien_stan("ANIMACJA")
 
     elif stan_gry == "ANIMACJA":
         czas_animacji += dt
-        # Soczysta animacja wejścia (Overshoot + Rotacja)
-        cel_x_g, cel_x_k = SZEROKOSC//2 - 250, SZEROKOSC//2 + 50
+        # EKSTREMALNA ANIMACJA: Lot po łuku + Fade-in + Rotacja
+        cel_x_g, cel_y_g = SZEROKOSC//2 - 250, WYSOKOSC//2 - 100
+        cel_x_k, cel_y_k = SZEROKOSC//2 + 50, WYSOKOSC//2 - 100
+        
         progress = min(1.0, czas_animacji * 1.5)
         
-        # Overshoot: efekt sprężyny
-        bounce = 1.0 + (0.2 * (1.0 - progress) * abs(random.uniform(-0.5, 0.5))) if progress < 1.0 else 1.0
-        x_g = -200 + (cel_x_g + 200) * progress * bounce
-        x_k = SZEROKOSC + (cel_x_k - SZEROKOSC) * progress * bounce
+        # Obliczanie pozycji po łuku (Arc)
+        def arc_pos(start, end, p, h):
+            x = start[0] + (end[0] - start[0]) * p
+            y = start[1] + (end[1] - start[1]) * p
+            # Dodajemy wygięcie łuku (sinusoida)
+            y -= h * (1.0 - (2.0 * p - 1.0)**2) 
+            return x, y
+
+        x_g, y_g = arc_pos(pos_startowa_g, (cel_x_g, cel_y_g), progress, 150)
+        x_k, y_k = arc_pos(pos_startowa_k, (cel_x_k, cel_y_k), progress, -150)
         
-        # ROTACJA: Broń obraca się podczas dolotu
-        kat_g = (1.0 - progress) * 360  # Obrót od 360 do 0 stopni
-        kat_k = (1.0 - progress) * -360 # Obrót w drugą stronę
+        # ROTACJA I ALPHA (Przezroczystość)
+        kat_g = (1.0 - progress) * 720 # 2 pełne obroty
+        kat_k = (1.0 - progress) * -720
+        alfa = int(progress * 255)
         
-        img_g = pygame.transform.rotate(grafiki_broni[wybor_gracza], kat_g)
-        img_k = pygame.transform.rotate(pygame.transform.flip(grafiki_broni[wybor_komputera], True, False), kat_k)
+        # Przygotowanie grafik z efektami
+        def prep_img(name, angle, a, flip=False):
+            img = grafiki_broni[name]
+            if flip: img = pygame.transform.flip(img, True, False)
+            img = pygame.transform.rotate(img, angle)
+            img.set_alpha(a)
+            return img
+
+        img_g = prep_img(wybor_gracza, kat_g, alfa)
+        img_k = prep_img(wybor_komputera, kat_k, alfa, True)
         
-        ekran.blit(img_g, img_g.get_rect(center=(x_g + 100 + off_x, WYSOKOSC//2 + off_y)))
-        ekran.blit(img_k, img_k.get_rect(center=(x_k + 100 + off_x, WYSOKOSC//2 + off_y)))
+        ekran.blit(img_g, img_g.get_rect(center=(x_g + 100 + off_x, y_g + 100 + off_y)))
+        ekran.blit(img_k, img_k.get_rect(center=(x_k + 100 + off_x, y_k + 100 + off_y)))
 
         # Moment kolizji (uderzenia)
         if 0.8 < czas_animacji < 1.0 and len(lista_fal) == 0:
             snd_hit.play()
-            stworz_shake(15) # Wstrząs przy uderzeniu
+            stworz_shake(45) # POTĘŻNY WSTRZĄS
             # Błysk i podstawowy wybuch (biały rdzeń)
             stworz_wybuch_extreme(SZEROKOSC//2, WYSOKOSC//2, BIALY, 40)
             efekt_flash = 255
